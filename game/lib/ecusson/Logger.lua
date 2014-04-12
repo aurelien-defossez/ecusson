@@ -133,32 +133,38 @@ end
 
 -- Unhandled error handler, which will automatically take a screenshot and send an email
 function Class:unhandledError(event)
-	print(" ")
-	print(" ")
-	print("[Warning] *X*X*X*X*X*X*X*X*X*X*X*X*X*")
-	print("[Warning] *X*                     *X*")
-	print("[Warning] *X*   Unhandled  Error  *X*")
-	print("[Warning] *X*                     *X*")
-	print("[Warning] *X*X*X*X*X*X*X*X*X*X*X*X*X*")
-	print(" ")
-	print(event.errorMessage)
-	print(" ")
-	print(event.stackTrace)
-	print(" ")
-
 	if not self.bugCaught then
 		self.bugCaught = true
+		
+		print(" ")
+		print(" ")
+		print("[Warning] *X*X*X*X*X*X*X*X*X*X*X*X*X*")
+		print("[Warning] *X*                     *X*")
+		print("[Warning] *X*   Unhandled  Error  *X*")
+		print("[Warning] *X*                     *X*")
+		print("[Warning] *X*X*X*X*X*X*X*X*X*X*X*X*X*")
+		print(" ")
+		print(event.errorMessage)
+		print(" ")
+		print(event.stackTrace)
+		print(" ")
 
 		if system.getInfo("environment") == "device" then
+			print("[Logger] Take screenshot")
 			self:takeScreenshot()
 
+			print("[Logger] Pause game")
 			Runtime:dispatchEvent{
 				name = "requirePause",
 				status = true
 			}
 
-			native.showAlert("Bug Report", "Send bug report?", {"No", "Yes"}, function()
-				self:sendEmail()
+			print("[Logger] Ask to send mail")
+			native.showAlert("Bug Report", "Send bug report?", {"No", "Yes"}, function(event)
+				if event.action == "clicked" and event.index == 2 then
+					print("[Logger] Send mail")
+					self:sendEmail()
+				end
 			end)
 		else
 			print("[Logger] Cannot send mail from simulator")

@@ -174,7 +174,7 @@ function Class:capLength(maxValue)
 	if length <= maxValue then
 		return self
 	else
-		return self:norm() * maxValue
+		return self * (maxValue / length)
 	end
 end
 
@@ -184,23 +184,20 @@ end
 
 -- Rotate the vector around a point (by default its origin)
 function Class:rotate(angle, center)
-	center = center or vec2(0, 0)
+	if center then
+		-- Translate vector and apply the rotation
+		return (self - center):rotate(angle) + center
+	else
+		local radAngle = angle * PI_180
+		local cosAngle = cos(radAngle)
+		local sinAngle = sin(radAngle)
 
-	-- Translate vector to the center of rotation
-	local translated = self - center
-
-	-- Rotate
-	local radAngle = angle * PI_180
-	local cosAngle = cos(radAngle)
-	local sinAngle = sin(radAngle)
-
-	local rotated = vec2(
-		translated.x * cosAngle - translated.y * sinAngle,
-		translated.x * sinAngle + translated.y * cosAngle
-	)
-
-	-- Translate back from the center
-	return rotated + center
+		-- Apply rotation
+		return vec2(
+			self.x * cosAngle - self.y * sinAngle,
+			self.x * sinAngle + self.y * cosAngle
+		)
+	end
 end
 
 -- Return a new vector with the minimal components of the two vectors

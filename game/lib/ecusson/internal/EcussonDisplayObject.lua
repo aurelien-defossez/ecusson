@@ -225,9 +225,23 @@ end
 -- Parameters:
 --  scale: The new scale
 function Class:setScale(scale)
-	self.scale = max(minScale, scale)
-	self._displayObject.xScale = self.scale
-	self._displayObject.yScale = self.scale
+	if type(scale) == "number" then
+		local boundedScale = scale == 0 and minScale or scale
+		self.scale = vec2(boundedScale, boundedScale)
+	else
+		self.scale = scale:clone()
+
+		if self.scale.x == 0 then
+			self.scale.x = minScale
+		end
+
+		if self.scale.y == 0 then
+			self.scale.y = minScale
+		end
+	end
+	
+	self._displayObject.xScale = self.scale.x
+	self._displayObject.yScale = self.scale.y
 end
 
 -- Set the color of the display object

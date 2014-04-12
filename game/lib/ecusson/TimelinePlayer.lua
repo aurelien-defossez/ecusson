@@ -46,11 +46,13 @@ function Class.create(options)
 	self.playing = false
 	self.previousTime = 0
 	self.time = options.start or 0
+	self.finishing = false
 
 	if not self.duration then
 		self.duration = 0
 
-		for _, fx in pairs(self.timeline) do
+		for i = 1, #self.timeline do
+			local fx = self.timeline[i]
 			self.duration = max(self.duration, fx.from or 0, fx.to or 0, fx.at or 0)
 		end
 	end
@@ -68,6 +70,11 @@ end
 -----------------------------------------------------------------------------------------
 -- Methods
 -----------------------------------------------------------------------------------------
+
+-- Checks if the timeline is playing
+function Class:isPlaying()
+	return self.playing
+end
 
 -- Stop the player
 function Class:play()
@@ -119,6 +126,7 @@ end
 
 -- Finish the timeline immediately
 function Class:finish()
+	self.finishing = true
 	if self.time < self.duration then
 		self:forward(self.duration - self.time)
 	end
@@ -133,7 +141,8 @@ end
 
 -- Update the scene
 function Class:update()
-	for _, fx in pairs(self.timeline) do
+	for i = 1, #self.timeline do
+		local fx = self.timeline[i]
 		local start = fx.from ~= nil and fx.from or fx.at
 
 		if self.time >= start then
@@ -142,7 +151,8 @@ function Class:update()
 				local options = {
 					parameters = fx.parameters,
 					firstFrame = not fx.started,
-					delta = self.time - fx.from
+					delta = self.time - fx.from,
+					finishing = self.finishing
 				}
 
 				-- Compute progress
@@ -176,7 +186,8 @@ function Class:update()
 							firstFrame = true,
 							delta = 0.0,
 							duration = 0.0,
-							progress = 1.0
+							progress = 1.0,
+							finishing = self.finishing
 						})
 					else
 						self.target[fx.action](self.target, {
@@ -184,7 +195,8 @@ function Class:update()
 							firstFrame = not fx.started,
 							delta = fx.to - fx.from,
 							duration = fx.to - fx.from,
-							progress = 1.0
+							progress = 1.0,
+							finishing = self.finishing
 						})
 					end
 				end

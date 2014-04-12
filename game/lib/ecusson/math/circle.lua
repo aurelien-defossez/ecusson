@@ -16,11 +16,13 @@ local utils = require("lib.ecusson.Utils")
 local Class = {}
 local MetaClass = {}
 
+local random = math.random
+
 -----------------------------------------------------------------------------------------
 -- Initialization and Destruction
 -----------------------------------------------------------------------------------------
 
--- Build the OBB
+-- Build the circle
 local function circle(center, radius)
 	local self = utils.extend(Class, MetaClass)
 
@@ -32,7 +34,7 @@ local function circle(center, radius)
 	return self
 end
 
--- Destroy the OBB
+-- Destroy the circle
 function Class:destroy()
 	if self.shape then
 		self.shape:removeSelf()
@@ -59,8 +61,13 @@ function Class:collideCircle(circle)
 end
 
 -- Return true if the circle collides with a point
-function Class:collidePoint(vector)
+function Class:containsPoint(vector)
 	return self.center:powDistance(vector) < self.powRadius
+end
+
+-- Return a random point in the circle
+function Class:randomPoint()
+	return self.center + vec2(random(self.radius), 0):rotate(random(360))
 end
 
 -- Draw shape

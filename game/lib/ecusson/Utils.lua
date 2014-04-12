@@ -16,6 +16,7 @@ local Class = {}
 -----------------------------------------------------------------------------------------
 
 local ceil = math.ceil
+local random = math.random
 
 local dtWarning = 0.1
 local maxDt = 0.2
@@ -37,6 +38,7 @@ local function fakeDestroy()
 	print("[Warning] *X*  Fake  Destroy  *X*")
 	print("[Warning] *X*                 *X*")
 	print("[Warning] *X*X*X*X*X*X*X*X*X*X*X*")
+	utils.softError("")
 end
 
 -----------------------------------------------------------------------------------------
@@ -161,9 +163,9 @@ end
 -- Extend a class for inheritance or for instanciation
 --
 -- Parameters:
---  ParentClass: The class to utils.extend from
+--  ParentClass: The class to extend from
 -- Returns:
---  The utils.extended object
+--  The extended object
 --
 -- Inheritance example:
 --  NewClass = utils.extend(ParentClass)
@@ -188,11 +190,14 @@ end
 --  object: The object to delete
 function Class.deleteObject(object)
 	setmetatable(object, {})
+
+	-- Reset all attributes
+	for key, value in pairs(object) do
+		object[key] = nil
+	end
 	
 	-- Apply the fakeDestroy method to prevent the applciation to crash if destroy is called again
-	object = {
-		destroy = fakeDestroy
-	}
+	object.destroy = fakeDestroy
 end
 
 -- Extract a value from a custom parametrable variable
@@ -269,12 +274,21 @@ function Class.stopBubbling()
 	return true
 end
 
+-- Prints an error in the console or crashes, depending on the configuration
+function Class.softError(message)
+	if system.getInfo("environment") == "simulator" then
+		error(message)
+	else
+		print(message)
+	end
+end
+
 -- Make a callback
 --
 -- Parameters:
 --  target: The target object to call back
 --  method: The method name to call
---  event: The event attributes
+--  event: The event attributes (optional, default is {})
 function Class.resolveCallback(target, method, event)
 	if target then
 		event = event or {}
@@ -295,6 +309,29 @@ end
 --  delta: the progress value in [0, 1]
 function Class.interpolateLinear(options)
 	return options.from + (options.to - options.from) * options.delta
+end
+
+-- Interpolate a value triangularly
+--
+-- Parameters:
+--  from: The value to interpolate from
+--  mid: The value to pass to at delta = 0.5
+--  to: The value to interpolate to
+--  delta: the progress value in [0, 1]
+function Class.interpolateTriangle(options)
+	if options.delta < 0.5 then
+		return Class.interpolateLinear{
+			from = options.from,
+			to = options.mid,
+			delta = options.delta * 2
+		}
+	else
+		return Class.interpolateLinear{
+			from = options.mid,
+			to = options.to,
+			delta = (options.delta - 0.5) * 2
+		}
+	end
 end
 
 -- Interpolate a color linearly
@@ -368,9 +405,68 @@ end
 --
 -- Parameters:
 --  a, b: The angles
-function Class.angleDifference(a, b)
+function Class.getAngleDifference(a, b)
 	local diff = abs(a - b)
 	return min(diff, 360 - diff)
+end
+
+-- Return the angular direction
+--
+-- Parameters:
+--  a: The first angle
+--  b: The second angle
+--
+-- Returns:
+--  -1 if the angular direction is counter-clockwise
+--  1 if the angular direction is clockwise
+function Class.getAngularDirection(a, b)
+	if a > 90 and b < -90 then
+		return -1
+	elseif a < -90 and b > 90 or a > b then
+		return 1
+	else
+		return -1
+	end
+end
+
+-- Return the angular movement between 2 angles
+--
+-- Parameters:
+--  a, b: The angles
+--
+-- Returns the difference between the angles, positive if clockwise, negative otherwise
+function Class.getAngularMovement(a, b)
+	return Class.getAngleDifference(a, b) * Class.getAngularDirection(a, b)
+end
+
+-- Return a copy of the input array, shuffled
+--
+-- Parameters:
+--  array: The array to shuffle
+--
+-- Returns:
+--  A copy of the array, shuffled
+function Class.shuffleArray(array)
+	local n = #array
+	local order = {}
+	local res = {}
+	 
+	for i = 1, n do
+		order[i] = {
+			index = i,
+			value = random()
+		}
+	end
+
+	table.sort(order, function(a, b)
+		return a.value < b.value end
+	)
+
+	for i = 1, n do
+		res[i] = array[order[i].index]
+	end
+
+	return res
 end
 
 -- Print in the console the memory usage
@@ -409,6 +505,7 @@ function enterFrameListener(event)
 		if dt < maxDt then
 			Runtime:dispatchEvent{
 				name = "ecussonEnterFrame",
+				time = event.time * .001,
 				dt = dt
 			}
 		end

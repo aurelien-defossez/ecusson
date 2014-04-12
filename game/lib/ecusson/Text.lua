@@ -44,6 +44,7 @@ local _255 = 1 / 255
 --  rotation: The text rotation (default is 0)
 --  font: The font (default is native.systemFont)
 --  size: The font size (default is 8)
+--  align: The text alignment (left, center or right) (default is left)
 --  color: The text color, as an array of color components (r, g, b, a (optional)) (default is 255, 255, 255, 255)
 --  opacity: The opacity value, in [0 ; 1] (default is 1)
 --  numeric: If true, then displays the text as a formatted numeric value
@@ -66,11 +67,6 @@ function Class.create(options)
 	self.numeric = options.numeric
 	self.shadows = {}
 
-	-- Apply numeric formatting
-	if self.numeric and options.text then
-		options.text = self:formatNumber(options.text)
-	end
-
 	-- Create group
 	if options.shadows then
 		self.group = display.newGroup()
@@ -86,27 +82,34 @@ function Class.create(options)
 		for _, shadow in pairs(options.shadows) do
 			self.shadows[#self.shadows + 1] = Text.create{
 				group = self.group,
-				text = options.text,
 				anchor = options.anchor,
 				width = options.width,
 				height = options.height,
 				position = shadow.offset,
 				rotation = options.rotation,
-				font = options.font,
+				font = shadow.font or options.font,
 				size = options.size,
-				color = shadow.color
+				color = shadow.color,
+				align = options.align
 			}
 		end
 	end
 
 	-- Create Corona text
-	if self.width > 0 then
-		self._displayObject = display.newText(options.text or "", 0, 0, self.width, self.height, self.font, self.size)
-	else
-		self._displayObject = display.newText(options.text or "", 0, 0, self.font, self.size)
-	end
+	self._displayObject = display.newText{
+		text = options.text or "",
+		width = self.width > 0 and self.width or nil,
+		height = self.width > 0 and self.height or nil,
+		font = self.font,
+		fontSize = self.size,
+		align = options.align
+	}
 
 	self:setColor(self.color)
+
+	if options.text then
+		self:setText(options.text)
+	end
 
 	-- Prevent Ecusson display object to add the text to the parent group
 	Super.super(self, options)
@@ -172,15 +175,16 @@ end
 --
 -- Parameters:
 --  text: The new text content
-function Class:setText(text)
-	if self.numeric then
+--  alreadyFormated: [Internal] If true, do not format the text again (for shadows)
+function Class:setText(text, alreadyFormated)
+	if not alreadyFormated and self.numeric then
 		text = self:formatNumber(text)
 	end
 
 	self._displayObject.text = text
 
 	for _, shadow in pairs(self.shadows) do
-		shadow:setText(text)
+		shadow:setText(text, true)
 	end
 end
 

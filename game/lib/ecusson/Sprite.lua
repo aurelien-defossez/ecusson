@@ -263,8 +263,10 @@ end
 --  autoDestroy: If true, destroys the sprite when the animation ends (default is false)
 --  hitTestable: If true, forces the display object to be hitTestable (cf Corona documentation) (default is false)
 function Class.create(options)
-	local self = utils.extend(Class)
+	return utils.extend(Class):super(options)
+end
 
+function Class:super(options)
 	-- Initialize attributes
 	self.spriteSet = options.spriteSet
 	self.autoHide = options.autoHide or false
@@ -289,7 +291,21 @@ function Class.create(options)
 	-- Create Corona sprite
 	local spriteSetDefinition = sets[options.spriteSet]
 	if not spriteSetDefinition then
-		error("Undefined spriteSet: "..options.spriteSet)
+		local found = false
+		for sheetName, sheetData in pairs(animationData) do
+			for setId, sprites in pairs(sheetData) do
+				if not found and options.spriteSet == setId then
+					Class.loadSheet(sheetName)
+					found = true
+					break
+				end
+			end
+		end
+
+		spriteSetDefinition = sets[options.spriteSet]
+		if not spriteSetDefinition then
+			error("Undefined spriteSet: "..options.spriteSet)
+		end
 	end
 	
 	self.spriteSet = options.spriteSet
@@ -299,12 +315,12 @@ function Class.create(options)
 	-- Prepare sprite
 	self._displayObject.timeScale = timeScale
 
+	Super.super(self, options)
+
 	-- Apply mask
 	if options.mask then
 		self:setMask(options.mask)
 	end
-
-	Super.super(self, options)
 
 	-- Create factor vector to position attachments relative to the sprite reference point
 	self.attachmentPositionFactor = self.anchor or vec2(0.5, 0.5)
@@ -313,8 +329,7 @@ function Class.create(options)
 	self.group:insert(self.attachmentsGroup)
 
 	if options.toBack then
-		self.attachmentsGroup:toBack()
-		self._displayObject:toBack()
+		self.group:toBack()
 	end
 
 	-- Auto play animation
@@ -413,7 +428,8 @@ function Class:pause()
 	if self._displayObject.pause then
 		self._displayObject:pause()
 	else
-		print("[Ecusson:Sprite] Impossible to pause sprite "..self.spriteSet..":"..self.animation..
+		utils.softError("[Ecusson:Sprite] Impossible to pause sprite "
+			..self.spriteSet..(self.animation and ":"..self.animation or "")..
 			", display object does not exists")
 	end
 end
@@ -434,6 +450,10 @@ function Class:setPosition(position)
 
 	if self.attachmentsCount > 0 then
 		self:repositionAttachmentsGroup()
+	end
+
+	if self.fixedMask then
+		self:setMaskPosition(-self.position - self.maskOffsetPosition)
 	end
 end
 
@@ -472,19 +492,23 @@ end
 function Class:setMask(options)
 	self._displayObject:setMask(options.image)
 
-	if options.rotation then
-		self:setMaskRotation(options.rotation)
-	end
-
 	self._displayObject.maskScaleX = 0.25
 	self._displayObject.maskScaleY = 0.25
 
 	self:setMaskPosition(options.position or vec2(0, 0))
+	self:setMaskRotation(options.rotation or 0)
+
+	self.fixedMask = options.fixed
+	if self.fixedMask then
+		self.maskOffsetPosition = (options.position or vec2(0, 0)) - self.position
+		self.maskOffsetRotation = (options.rotation or 0) - self.rotation
+	end
 end
 
 -- Remove the mask from the sprite
 function Class:removeMask()
 	self._displayObject:setMask(nil)
+	self.fixedMask = false
 end
 
 -- Move the sprite mask to a given position
