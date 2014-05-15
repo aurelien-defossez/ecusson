@@ -4,7 +4,9 @@
         <key>fileFormatVersion</key>
         <int>3</int>
         <key>texturePackerVersion</key>
-        <string>3.2.1</string>
+        <string>3.3.4</string>
+        <key>fileName</key>
+        <string>D:/Work/ecusson/assets/graphics/sprites/mainSheet.tps</string>
         <key>autoSDSettings</key>
         <array>
             <struct type="AutoSDSettings">
@@ -70,7 +72,7 @@
         <key>dataFormat</key>
         <string>corona-imagesheet</string>
         <key>textureFileName</key>
-        <filename>../../../game/runtimedata/sprites/sprites{v}.png</filename>
+        <filename>../../../game/runtimedata/sprites/mainSheet{v}.png</filename>
         <key>flipPVR</key>
         <false/>
         <key>ditherType</key>
@@ -93,6 +95,8 @@
         <uint>80</uint>
         <key>pngOptimizationLevel</key>
         <uint>1</uint>
+        <key>webpQualityLevel</key>
+        <uint>101</uint>
         <key>textureSubPath</key>
         <string></string>
         <key>textureFormat</key>
@@ -166,7 +170,7 @@
             <key>lua</key>
             <struct type="DataFile">
                 <key>name</key>
-                <filename>../../../game/runtimedata/sprites/sprites{v}.lua</filename>
+                <filename>../../../game/runtimedata/sprites/mainSheet{v}.lua</filename>
             </struct>
         </map>
         <key>multiPack</key>
@@ -202,10 +206,12 @@
             <enum type="SpriteSettings::TrimMode">None</enum>
             <key>heuristicMask</key>
             <false/>
+            <key>pivotPoint</key>
+            <enum type="SpriteSettings::PivotPoint">Center</enum>
         </struct>
         <key>fileList</key>
         <array>
-            <filename>sprites</filename>
+            <filename>mainSheet</filename>
         </array>
         <key>ignoreFileList</key>
         <array/>

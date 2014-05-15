@@ -100,7 +100,7 @@ Sprite.setup{
 	animationData = require("src.config.Sprites").sheets
 }
 
-Sprite.loadSheet("sprites")
+Sprite.loadSheet("mainSheet")
 
 -----------------------------------------------------------------------------------------
 -- Setup sounds

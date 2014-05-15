@@ -22,7 +22,7 @@
 
 return {
 	sheets = {
-		sprites = {
+		mainSheet = {
 			level = {
 				background = {},
 				foreground = {}
