@@ -196,6 +196,18 @@ function Class.loadSheet(sheetName)
 	end
 end
 
+-- Load a bunch of spritesheets
+--
+-- Parameters:
+--  sheetNames: An array with the names of the spritesheets to load
+function Class.loadSheets(sheetNames)
+	if sheetNames then
+		for i = 1, #sheetNames do
+			Sprite.loadSheet(sheetNames[i])
+		end
+	end
+end
+
 -- Unload every loaded spritesheet
 function Class:tearDown()
 	for sheetName, sheet in pairs(spritesheets) do
@@ -444,9 +456,8 @@ end
 
 -- Pause the sprite animation
 function Class:pause()
-	self.isAnimating = self._displayObject.isPlaying
-
 	if self._displayObject.pause then
+		self.isAnimating = self._displayObject.isPlaying
 		self._displayObject:pause()
 	else
 		utils.softError("[Ecusson:Sprite] Impossible to pause sprite "
@@ -457,7 +468,7 @@ end
 
 -- Resume the sprite animation
 function Class:resume()
-	if self.isAnimating then
+	if self.isAnimating and self._displayObject.play then
 		self._displayObject:play()
 	end
 end

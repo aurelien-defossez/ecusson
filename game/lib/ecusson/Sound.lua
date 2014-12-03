@@ -86,48 +86,55 @@ function Class.setup(options)
 
 	-- Load sounds
 	for groupId, groupSounds in pairs(options.soundsData) do
-		groupVolumes[groupId] = 1.0
-
-		for soundId, soundOptions in pairs(groupSounds) do
-			-- Select the appropriate method to load the sound
-			local media = enableMedia and (soundOptions.media or false)
-			local loadMethod
-
-			if soundOptions.stream then
-				loadMethod = audio.loadStream
-			elseif media then
-				loadMethod = media.newEventSound
-			else
-				loadMethod = audio.loadSound
+		if groupId == "settings" then
+			if groupSounds.reserve then
+				audio.reserveChannels(groupSounds.reserve)
 			end
+		else
+			groupVolumes[groupId] = 1.0
 
-			local autoDestroy = soundOptions.autoDestroy
-			if autoDestroy == nil then
-				autoDestroy = true
-			end
+			for soundId, soundOptions in pairs(groupSounds) do
+				-- Select the appropriate method to load the sound
+				local media = enableMedia and (soundOptions.media or false)
+				local loadMethod
 
-			-- Save sound settings
-			sounds[soundId] = {
-				name = soundId,
-				groupId = groupId,
-				loadMethod = loadMethod,
-				loaded = false,
-				purgeable = soundOptions.purgeable or false,
-				settings = {
-					variations = soundOptions.variations or { "" },
-					loops = soundOptions.loops or 0,
-					volume = soundOptions.volume or 1,
-					duration = soundOptions.duration or nil,
-					fadeIn = soundOptions.fadeIn or nil,
-					fadeOut = soundOptions.fadeOut or nil,
-					pitch = soundOptions.pitch or 1,
-					stream = soundOptions.stream or false,
-					media = media,
-					extension = soundOptions.extension or defaultExtension,
-					autoDestroy = autoDestroy,
-					autoUnload = soundOptions.autoUnload or false
+				if soundOptions.stream then
+					loadMethod = audio.loadStream
+				elseif media then
+					loadMethod = media.newEventSound
+				else
+					loadMethod = audio.loadSound
+				end
+
+				local autoDestroy = soundOptions.autoDestroy
+				if autoDestroy == nil then
+					autoDestroy = true
+				end
+
+				-- Save sound settings
+				sounds[soundId] = {
+					name = soundId,
+					groupId = groupId,
+					loadMethod = loadMethod,
+					loaded = false,
+					purgeable = soundOptions.purgeable or false,
+					settings = {
+						variations = soundOptions.variations or { "" },
+						channel = soundOptions.channel or nil,
+						loops = soundOptions.loops or 0,
+						volume = soundOptions.volume or 1,
+						duration = soundOptions.duration or nil,
+						fadeIn = soundOptions.fadeIn or nil,
+						fadeOut = soundOptions.fadeOut or nil,
+						pitch = soundOptions.pitch or 1,
+						stream = soundOptions.stream or false,
+						media = media,
+						extension = soundOptions.extension or defaultExtension,
+						autoDestroy = autoDestroy,
+						autoUnload = soundOptions.autoUnload or false
+					}
 				}
-			}
+			end
 		end
 	end
 end
@@ -189,6 +196,18 @@ function Class.loadSound(soundId)
 	end
 end
 
+-- Load a bunch of sounds
+--
+-- Parameters:
+--  soundIds: An array with the ids of the sounds to load
+function Class.loadSounds(soundIds)
+	if soundIds then
+		for i = 1, #soundIds do
+			Sound.loadSound(soundIds[i])
+		end
+	end
+end
+
 -- Unload a sound previously loaded with loadSound
 --
 -- Parameters:
@@ -197,13 +216,20 @@ function Class.unloadSound(soundId)
 	local soundDefinition = sounds[soundId]
 
 	if soundDefinition.loaded then
+		sounds[soundId].loaded = false
 		print("[Sound] unload sound "..soundId)
+
+		for i = 1, audio.totalChannels do
+			local sound = channels[i]
+			if sound and sound.id == soundId then
+				sound:destroy()
+			end
+		end
 
 		for i = 1, #soundDefinition.variations do
 			audio.dispose(soundDefinition.variations[i].handle)
 		end
 
-		sounds[soundId].loaded = false
 		sounds[soundId].variations = nil
 	end
 end
@@ -259,10 +285,11 @@ end
 -- Create the sound
 --
 -- Parameters:
---  sound: The sound name
---  stream: If true, streams the sound instead of loading everything in memory
+--  sound: The sound name.
+--  stream: If true, streams the sound instead of loading everything in memory.
 --  media: If true, uses the media library instead of audio tu play this sound on
---    Android devices (may be more reactive but cannot change the volume, pause it, etc.)
+--    Android devices (may be more reactive but cannot change the volume, pause it, etc.).
+--  channel: The channel id you want the sound to be played on (Default is 0, automatic).
 --  loops: The number of times you want the audio to loop (Default is 0).
 --    Notice that 0 means the audio will loop 0 times which means that the sound
 --    will play once and not loop. Continuing that thought, 1 means the audio will
@@ -375,8 +402,8 @@ function Class.create(sound, options)
 			end
 		else
 			self.channel, self.source = audio.play(self.handle, {
+				channel = options.channel or variation.channel,
 				loops = options.loops or variation.loops,
-				fadeIn = fadeIn and utils.extractValue(fadeIn) * 1000 or nil,
 				onComplete = function(options)
 					if self.id and not audio.isChannelPlaying(self.channel) then
 						self:onSoundComplete(options)
@@ -399,11 +426,16 @@ function Class.create(sound, options)
 			al.Source(self.source, al.MAX_DISTANCE, 4)
 
 			-- Set volume
-			if not fadeIn then
+			if fadeIn then
 				self:setVolume{
-					volume = volume and utils.extractValue(volume) or 1.0
+					volume = 0.0
 				}
 			end
+
+			self:setVolume{
+				volume = volume and utils.extractValue(volume) or 1.0,
+				time = fadeIn and utils.extractValue(fadeIn) or nil
+			}
 
 			-- Set pan
 			if options.pan then
@@ -413,6 +445,11 @@ function Class.create(sound, options)
 			-- Set pitch
 			if pitch then
 				self:setPitch(pitch)
+			end
+
+			-- Seek
+			if options.seek then
+				self:seek(options.seek)
 			end
 
 			-- Manual duration handling (to have a proper fade out if any)
@@ -433,6 +470,11 @@ end
 function Class:destroy()
 	if self.playing and not self.isMedia then
 		self:stop()
+	end
+
+	-- Rewind
+	if self.isStream then
+		self:rewind()
 	end
 
 	if self.autoUnload then
@@ -519,14 +561,14 @@ end
 function Class:setVolume(options)
 	if self.isMedia then
 		print("[Ecusson:Sound] Error: Cannot set the volume of a media sound")
-	elseif self.channel then
+	elseif self.channel and options.volume then
 		self.volume = utils.extractValue(options.volume)
 
 		if options.time and options.time > 0 then
 			audio.fade{
 				channel = self.channel,
 				time = utils.extractValue(options.time) * 1000,
-				volume = self.volume * groupVolumes[self.groupId]
+				volume = self.volume
 			}
 		else
 			audio.setVolume(self.volume * groupVolumes[self.groupId], {
@@ -606,11 +648,6 @@ end
 -- Called when the sound has finished playing
 function Class:onSoundComplete(options)
 	self.playing = false
-
-	-- Auto-rewind
-	if self.isStream then
-		self:rewind()
-	end
 
 	-- Call user callback if any
 	utils.resolveCallback(self.onComplete, "onSoundComplete", event)

@@ -43,6 +43,12 @@ function Class.create(options)
 	self.screenshot = false
 	self.bugCaught = false
 	self.lines = {}
+	self.bugReportPopupTitle = "The game crashed"
+	self.bugReportPopupContent = "Would you like to send a bug report to the developer?"
+	self.bugReportMailTitle = "Bug report"
+	self.bugReportMailBody = ""
+	self.yes = "Yes"
+	self.no = "No"
 
 	-- Reset log file
 	io.close(io.open(self.filePath, "w"))
@@ -79,6 +85,15 @@ end
 -----------------------------------------------------------------------------------------
 -- Methods
 -----------------------------------------------------------------------------------------
+
+function Class:setTexts(options)
+	self.bugReportPopupTitle = options.popupTitle
+	self.bugReportPopupContent = options.popupContent
+	self.bugReportMailTitle = options.mailTitle
+	self.bugReportMailBody = options.mailBody
+	self.yes = options.yes
+	self.no = options.no
+end
 
 -- Write all buffer in file
 function Class:writeFile()
@@ -126,12 +141,10 @@ function Class:sendEmail()
 	-- Prompt the user to send a mail
 	native.showPopup("mail", {
 		to = self.bugReportMail,
-		subject = "Kawaii Killer bug report",
-		body = "",
+		subject = self.bugReportMailTitle,
+		body = self.bugReportMailBody,
 		attachment = attachments
 	})
-
-	self.bugCaught = false
 end
 
 -----------------------------------------------------------------------------------------
@@ -161,13 +174,21 @@ function Class:unhandledError(event)
 			self:takeScreenshot()
 
 			print("[Logger] Pause game")
-			Runtime:dispatchEvent{
-				name = "requirePause",
-				status = true
-			}
+			local status, err = pcall(function(options)
+				Runtime:dispatchEvent{
+					name = "requirePause",
+					status = true
+				}
+			end)
+
+			if not status then
+				print("[Logger] Error while pausing game", err)
+			end
 
 			print("[Logger] Ask to send mail")
-			native.showAlert("Bug Report", "Send bug report?", {"No", "Yes"}, function(event)
+			native.showAlert(self.bugReportPopupTitle, self.bugReportPopupContent, { self.no, self.yes }, function(event)
+				self.bugCaught = false
+
 				if event.action == "clicked" and event.index == 2 then
 					print("[Logger] Send mail")
 					self:sendEmail()
@@ -175,6 +196,7 @@ function Class:unhandledError(event)
 			end)
 		else
 			print("[Logger] Cannot send mail from simulator")
+			self.bugCaught = false
 		end
 	end
 end

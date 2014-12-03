@@ -99,7 +99,7 @@ function Class.create(options)
 	self._displayObject = display.newText{
 		text = options.text or "",
 		width = self.width > 0 and self.width or nil,
-		height = self.width > 0 and self.height or nil,
+		height = self.height > 0 and self.height or nil,
 		font = self.font,
 		fontSize = self.size,
 		align = options.align

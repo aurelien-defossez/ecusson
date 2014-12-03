@@ -113,6 +113,7 @@ function Class:collideLine(a, b, _collisionsCount)
 		return {
 			collides = _collisionsCount ~= -1,
 			collisionsCount = _collisionsCount,
+			points = { a, b },
 			distance = a:distance(b)
 		}
 	end

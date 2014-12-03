@@ -61,6 +61,15 @@ end
 function Class:load(langId)
 	self.langId = langId
 	self.langTable = require(self.path..langId)
+
+	logger:setTexts{
+		popupTitle = self:translate("bugReportPopupTitle"),
+		popupContent = self:translate("bugReportPopupContent"),
+		mailTitle = self:translate("bugReportMailTitle"),
+		mailBody = self:translate("bugReportMailBody"),
+		yes = self:translate("yes"),
+		no = self:translate("no")
+	}
 end
 
 -- Translate a text into the current language

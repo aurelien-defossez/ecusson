@@ -17,6 +17,7 @@ local Class = {}
 
 local floor = math.floor
 local ceil = math.ceil
+local round = math.round
 local random = math.random
 local min = math.min
 local max = math.max
@@ -50,6 +51,8 @@ end
 -- Sources:
 --  http://en.wikipedia.org/wiki/List_of_iOS_devices
 --  http://stackoverflow.com/questions/12505414/whats-the-device-code-platform-string-for-iphone-5-5c-5s-ipod-touch-5
+--	http://dpi.lv/
+--	https://theiphonewiki.com/wiki/IPhone
 local function determineDpi()
 	local platformName = system.getInfo("platformName")
 
@@ -65,11 +68,14 @@ local function determineDpi()
 		-- iPhones
 		if modelType == "iPho" then
 			local modelVersion = tonumber(string.sub(model, 7, 7))
+			local modelSubVersion = tonumber(string.sub(model, 9, 9))
 
 			if modelVersion <= 2 then
 				return 163	-- iPhone Classic (2G, 3G, 3GS): 163 dpi
+			elseif modelVersion <= 6 or modelVersion == 7 and modelSubVersion == 2 then
+				return 326	-- iPhone Retina (4, 4S, 5, 5C, 5S, 6): 326 dpi
 			else
-				return 326	-- iPhone Retina (4, 4S, 5, 5C, 5S): 326 dpi
+				return 401	-- iPhone Retina+ (6+ (iPhone7,1)): 401
 			end
 
 		-- iPads
@@ -96,6 +102,10 @@ local function determineDpi()
 			else
 				return 326	-- iPod (4, 5): 326 dpi
 			end
+
+		-- Xcode simulator
+		else
+			return 264	-- iPad Retina resolution
 		end
 
 	-- Corona simulator
@@ -229,8 +239,17 @@ end
 function Class.toReadableTime(time, showMilliseconds)
 	local minutes = floor(time / 60)
 	local seconds = utils.panTime(floor(time - 60 * minutes))
+	local milliseconds = ""
 
-	local milliseconds = showMilliseconds and "."..utils.panTime(floor((time - 60 * minutes - seconds) * 100)) or ""
+	if showMilliseconds then
+		milliseconds = ceil((time - 60 * minutes - seconds) * 100)
+		if milliseconds == 100 then
+			milliseconds = 99
+		end
+
+		milliseconds = "."..utils.panTime(milliseconds)
+	end
+
 	return minutes..":"..seconds..milliseconds
 end
 
@@ -275,6 +294,8 @@ function Class.printTable(var, name, iteration)
 						-- key contains special characters
 						child = name .. '["' .. k .. '"]'
 					end
+				elseif type(k) == "number" then
+					child = name .. "[" .. k .. "]"
 				else
 					child = name .. ".<table>"
 				end
@@ -292,6 +313,13 @@ end
 -- Get the system time in seconds
 function Class.getTime()
 	return system.getTimer() * .001
+end
+
+local lastTick = 0
+function Class.tick(message)
+	local time = Class.getTime()
+	print("[Tick] "..(message or ""), time - lastTick)
+	lastTick = time
 end
 
 -- Prevent an event from bubbling up
@@ -424,7 +452,11 @@ end
 --  The angle to bind
 function Class.bindAngle(angle)
 	if angle < 0 then
-		return angle + 360
+		repeat
+			angle = angle + 360
+		until angle > 0
+		
+		return angle
 	else
 		return angle % 360
 	end
@@ -435,7 +467,7 @@ end
 -- Parameters:
 --  a, b: The angles
 function Class.getAngleDifference(a, b)
-	local diff = abs(a - b)
+	local diff = Class.bindAngle(a - b)
 	return min(diff, 360 - diff)
 end
 
@@ -449,13 +481,18 @@ end
 --  -1 if the angular direction is counter-clockwise
 --  1 if the angular direction is clockwise
 function Class.getAngularDirection(a, b)
-	if a > 90 and b < -90 then
-		return -1
-	elseif a < -90 and b > 90 or a > b then
-		return 1
-	else
-		return -1
+	a = Class.bindAngle(a)
+	b = Class.bindAngle(b)
+
+	if abs (a - b) > 180 then
+		if a < b then
+			a = a + 360
+		else
+			b = b + 360
+		end
 	end
+
+	return a > b and 1 or -1
 end
 
 -- Return the angular movement between 2 angles

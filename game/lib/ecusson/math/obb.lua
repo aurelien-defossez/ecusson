@@ -76,7 +76,21 @@ end
 --  1: 1 collision, meaning on end of the line is inside while the other is outside
 --  2: 2 collisions, meaning the line goes through the box
 function Class:collideLine(a, b)
-	return self:_getAABB():collideLine(self:_worldToLocal(a), self:_worldToLocal(b))
+	local collision = self:_getAABB():collideLine(self:_worldToLocal(a), self:_worldToLocal(b))
+
+	if collision.collides then
+		return {
+			collides = collision.collides,
+			collisionsCount = collision.collisionsCount,
+			points = {
+				self:_localToWorld(collision.points[1]),
+				self:_localToWorld(collision.points[2])
+			},
+			distance = collision.distance
+		}
+	else
+		return collision
+	end
 end
 
 -- Return a AABB as if the OOB was not oriented
@@ -90,6 +104,11 @@ end
 -- Return the local position of a vector in the OBB coordinate system
 function Class:_worldToLocal(vector)
 	return vector:rotate(-self.rotation, self.center)
+end
+
+-- Return the local position of a vector in the OBB coordinate system
+function Class:_localToWorld(vector)
+	return vector:rotate(self.rotation, self.center)
 end
 
 -- Draw shape
